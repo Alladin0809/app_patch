@@ -1,0 +1,8 @@
+#dev net
+name = "trueman-dev-nuxt-workers"  
+
+compatibility_date = "2025-11-27"
+
+[assets]
+directory = "./build"
+not_found_handling = "single-page-application" 

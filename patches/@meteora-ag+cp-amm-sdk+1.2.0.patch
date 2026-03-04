@@ -1,0 +1,73 @@
+diff --git a/node_modules/@meteora-ag/cp-amm-sdk/dist/index.mjs b/node_modules/@meteora-ag/cp-amm-sdk/dist/index.mjs
+index 1fe150c..4699014 100644
+--- a/node_modules/@meteora-ag/cp-amm-sdk/dist/index.mjs
++++ b/node_modules/@meteora-ag/cp-amm-sdk/dist/index.mjs
+@@ -7668,7 +7668,7 @@ function derivePositionNftAccount(positionNftMint) {
+ }
+ 
+ // src/helpers/token.ts
+-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
++import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes/index.js";
+ import {
+   AccountLayout,
+   createAssociatedTokenAccountIdempotentInstruction,
+@@ -7885,7 +7885,7 @@ var getEstimatedComputeUnitIxWithBuffer = (connection, instructions, feePayer, b
+ });
+ 
+ // src/helpers/utils.ts
+-import { BN as BN2 } from "@coral-xyz/anchor";
++import { BN as BN2 } from "bn.js";
+ import Decimal from "decimal.js";
+ var getMaxAmountWithSlippage = (amount, rate) => {
+   const slippage = (100 + rate) / 100 * BASIS_POINT_MAX;
+@@ -7988,7 +7988,7 @@ var vestingByPositionFilter = (position) => {
+ };
+ 
+ // src/helpers/token2022.ts
+-import { BN as BN3 } from "@coral-xyz/anchor";
++import { BN as BN3 } from "bn.js";
+ import {
+   calculateFee,
+   getEpochFee,
+@@ -8070,8 +8070,9 @@ function calculateTransferFeeExcludedAmount(transferFeeIncludedAmount, mint, cur
+ }
+ 
+ // src/helpers/vestings.ts
+-import { BN as BN4 } from "@coral-xyz/anchor";
+-import { min } from "bn.js";
++import { BN as BN4 } from "bn.js";
++// import { min } from "bn.js";
++const min = BN.min
+ function isVestingComplete(vestingData, currentPoint) {
+   const cliffPoint = vestingData.cliffPoint;
+   const periodFrequency = vestingData.periodFrequency;
+@@ -8120,7 +8121,7 @@ import BN9 from "bn.js";
+ import BN7 from "bn.js";
+ 
+ // src/math/feeMath.ts
+-import { BN as BN6 } from "@coral-xyz/anchor";
++import { BN as BN6 } from "bn.js";
+ 
+ // src/math/utilsMath.ts
+ import Decimal2 from "decimal.js";
+@@ -9598,7 +9599,7 @@ function swapQuotePartialInput(pool, currentPoint, amountIn, slippage, aToB, has
+ }
+ 
+ // src/math/priceMath.ts
+-import { BN as BN13 } from "@coral-xyz/anchor";
++import { BN as BN13 } from "bn.js";
+ import Decimal3 from "decimal.js";
+ function calculateInitSqrtPrice(tokenAAmount, tokenBAmount, minSqrtPrice, maxSqrtPrice) {
+   if (tokenAAmount.isZero() || tokenBAmount.isZero()) {
+@@ -9947,7 +9948,10 @@ function getDynamicFeeParams(baseFeeBps, maxPriceChangeBps = MAX_PRICE_CHANGE_BP
+ }
+ 
+ // src/CpAmm.ts
+-import BN16, { min as min2, max } from "bn.js";
++// import BN16, { min as min2, max } from "bn.js";
++import { BN as BN16 } from "bn.js";
++const min2 = BN.min
++const max = BN.max
+ var CpAmm = class {
+   constructor(connection) {
+     this._program = new Program(cp_amm_default, {
