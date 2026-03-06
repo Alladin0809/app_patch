@@ -65,18 +65,10 @@ export function SystemBootstrap() {
 
     //只在初始化的时候，获取一次
     useEffect(() => {
-        //console.log(' useEffect sysInfoUpdate ' + sysInfoUpdate)
         if (sysInfoUpdate) {
             updateSystemInfo()
         }
     }, [sysInfoUpdate])
-
-    useEffect(() => {
-        // const timer = setInterval(() => {
-        //     updateSystemInfo()
-        // }, 40000)
-        // return () => clearInterval(timer)
-    }, [address])
 
     //Debug模式判断
     useEffect(() => {

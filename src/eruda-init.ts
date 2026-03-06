@@ -15,3 +15,6 @@ if (meta.env?.MODE === 'qa') {
     })
 }
 
+if ((import.meta as any).env.MODE === 'production') {
+    console.log = () => {}
+}

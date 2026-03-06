@@ -1,9 +1,8 @@
 import { JSON2IPFSURL } from '@/service/lib.upload.js'
-import { formatHash4 } from '@/service/utils/helpers.js'
 import { useWalletStore } from '@/store/wallet.store'
 
 import { useWalletService } from '@/hooks/useWalletService'
-import { apiProductCreate, apiClaimToken } from '@/service/api.js'
+import { apiClaimPrize, apiProductCreateEx } from '@/service/api.js'
 
 import libmeteora from '@/service/web3/lib.meteora.js'
 
@@ -31,8 +30,7 @@ export const useDeployService = () => {
     const address = useWalletStore((s) => s.address)
     const { handleSignTransaction } = useWalletService()
 
-    //platform token
-    const handleCreateToken = async ({
+    const handleCreateProductEx = async ({
         formatMeta,
         formatParams,
         onToast,
@@ -67,136 +65,18 @@ export const useDeployService = () => {
         params = { ...params, ipfs_url: urlHash }
 
         try {
-            let result = await apiPlatformMobCreate(privyToken, params)
-            if (result && result?.base64_transaction) {
-                let base64Tranx = result?.base64_transaction
-                let base64 = await libmeteora.sign_base64(
-                    handleSignTransaction,
-                    wallet,
-                    base64Tranx
-                )
-
-                if (base64 == null || base64?.length == 0) {
-                    onToast('Signature failed', 'error')
-                } else {
-                    let res = await apiPlatformMobCreateEx(privyToken, {
-                        mint: result?.mint,
-                        base64_transaction: base64,
-                    })
-                    onToast(
-                        `Token [${formatHash4(
-                            result?.mint
-                        )}] created successfully.`,
-                        'success'
-                    )
-                    return result?.mint
-                }
-            } else {
-                console.warn('handleCreateToken:' + JSON.stringify(result))
-                onToast(JSON.stringify(result), 'error')
-            }
-        } catch (error: unknown) {
-            console.warn('handleCreateToken failed', error)
-            const msg =
-                (error as { status?: number; data?: { message?: string } })
-                    ?.data?.message ??
-                (error as { message?: string })?.message ??
-                'Network error'
-            onToast(msg, 'error')
-        }
-
-        return null
-    }
-
-    const handleCreateProduct = async ({
-        formatMeta,
-        formatParams,
-        onToast,
-        autoLaunch,
-        extension,
-    }: CreateProc) => {
-        if (!formatMeta || !formatParams) {
-            onToast('Parameters error.', 'error')
-            return null
-        }
-
-        if (solBalance < MIN_BALANCE_REQUIRE) {
-            onToast('The wallet balance is insufficient.', 'error')
-            return null
-        }
-
-        if (!privyToken) {
-            onToast('The privyToken is empty, wallet is disconnected.', 'error')
-            return null
-        }
-
-        let urlHash = await JSON2IPFSURL(formatMeta())
-        if (!urlHash) {
-            onToast('IPFS failure. Please try again later.', 'error')
-            return null
-        }
-
-        let params = formatParams()
-        if (!params) {
-            onToast('Format parameters failure.', 'error')
-            return null
-        }
-
-        params = { ...params, ipfs_url: urlHash }
-
-        try {
+            let result = await apiProductCreateEx('11234', params)
             console.log(
-                `handleCreateProduct autoLaunch:${autoLaunch}, extension:${extension}`
+                'handleCreateProductEx result:' + JSON.stringify(result)
             )
-
-            let result = await apiProductCreate(privyToken, params)
-            console.log('handleCreateProduct result:' + JSON.stringify(result))
             if (result == null || result.code !== 200) {
                 onToast('Create product failed', 'error')
                 return null
             }
 
-            //只发链上
-            if (autoLaunch && result && result?.tx_base64) {
-                let base64Tranx = result?.tx_base64
-                let signature = await libmeteora.send_base64Tranx(
-                    handleSignTransaction,
-                    base64Tranx
-                )
-                console.log('send_base64Tranx  signature return:' + signature)
-                if (signature == null || signature?.length == 0) {
-                    onToast('send_base64Tranx failed', 'error')
-                    return null
-                } else {
-                    return result?.product
-                }
-            }
-
-            if (result && result?.tx_base64) {
-                let base64Tranx = result?.tx_base64
-                let signature = await libmeteora.sign_base64Tranx(
-                    handleSignTransaction,
-                    wallet,
-                    base64Tranx
-                )
-
-                console.log('sign_base64Tranx  signature return:' + signature)
-                if (signature == null || signature?.length == 0) {
-                    onToast('Signature failed', 'error')
-                } else {
-                    return result?.product
-                }
-            } else {
-                console.warn(
-                    'apiProductCreate  result fail: ' + JSON.stringify(result)
-                )
-                onToast(
-                    `Code:${result?.code}, message: ${result?.message}`,
-                    'error'
-                )
-            }
+            return result
         } catch (error) {
-            console.error('apiProductCreate error:' + error)
+            console.error('handleCreateProductEx error:' + error)
             throw error
         }
 
@@ -267,7 +147,7 @@ export const useDeployService = () => {
     const handleClaim = async ({ mint, onToast }: ClaimProc) => {
         try {
             const params = { wallet: address, mint }
-            const result = await apiClaimToken(privyToken, params)
+            const result = await apiClaimPrize(privyToken, params)
             if (result == null || result.balance === undefined) {
                 const msg = result?.message
                     ? `Code:${result.code}, message: ${result.message}`
@@ -309,9 +189,8 @@ export const useDeployService = () => {
     }
 
     return {
-        handleCreateToken,
         handleCreateClient,
-        handleCreateProduct,
+        handleCreateProductEx,
         handleClaim,
     }
 }

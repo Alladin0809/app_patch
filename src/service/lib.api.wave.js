@@ -68,7 +68,7 @@ async function waveRequest(apiKey, options = {}) {
         headers['Authorization'] = 'OAuth2 ' + token
     }
 
-    let body = ''
+    let body = undefined
     if (config.body === 'params') body = params
     else if (config.body === 'data' && data !== undefined) body = data
     else if (config.body !== 'empty') body = params
@@ -87,83 +87,37 @@ async function waveRequest(apiKey, options = {}) {
     }
 }
 
-// ——— 以下为基于配置的 API 封装，保持原有调用签名 ———
+// ——— 以下为基于 api.md 的 API 封装 ———
 
+/** GET System Info — POST /1/system/info, no auth */
 async function get_system_info() {
-    return waveRequest('get_system_info', {})
+    return waveRequest('system_info', {})
 }
 
-async function get_current_ranks() {
-    return waveRequest('get_current_ranks', {})
+/** User Login — POST /1/user/login, body: { wallet } */
+async function login(token, walletAddress) {
+    return waveRequest('user_login', { token, data: { wallet: walletAddress } })
 }
 
-async function get_history_ranks() {
-    return waveRequest('get_history_ranks', {})
-}
-
-async function login(token, address) {
-    const data = WAVE_API_CONFIG.login.dataFrom(address)
-    return waveRequest('login', { token, data })
-}
-
+/** Get User Info — POST /1/user/info, returns { code, rounds } */
 async function get_user_info(token) {
-    return waveRequest('get_user_info', { token })
+    return waveRequest('user_info', { token })
 }
 
-async function get_twitter_info(tsn) {
-    return waveRequest('get_twitter_info', { pathParams: { tsn } })
+/** Claim Prize — POST /1/user/prize/claim, returns { code, base64_transaction, balance } */
+async function claim_prize(token) {
+    return waveRequest('user_prize_claim', { token })
 }
 
-async function post_bind_twitter(token) {
-    return waveRequest('post_bind_twitter', { token })
-}
-
-async function post_bind_code(token, invite_code) {
-    const data = WAVE_API_CONFIG.post_bind_code.dataFrom(invite_code)
-    return waveRequest('post_bind_code', { token, data })
-}
-
-async function get_rank_reward(token) {
-    return waveRequest('get_rank_reward', { token })
-}
-
-async function claim_rank_reward(token, params) {
-    return waveRequest('claim_rank_reward', { token, params })
-}
-
-async function product_check_tsn(token, tsn) {
-    const data = WAVE_API_CONFIG.product_check_tsn.dataFrom(tsn)
-    return waveRequest('product_check_tsn', { token, data })
-}
-
-async function product_create(token, data) {
-    return waveRequest('product_create', { token, data })
-}
-
-async function get_product_list(token, params) {
-    return waveRequest('get_product_list', { token, params })
-}
-
-async function get_mycreator_list(token) {
-    return waveRequest('get_mycreator_list', { token })
-}
-
-async function get_product_info(token, mint) {
-    if (mint == null || (typeof mint === 'string' && mint.length === 0)) {
-        console.warn('get_product_info error mint:' + mint)
-        return
-    }
-    return waveRequest('get_product_info', { token, pathParams: { mint } })
-}
-
-async function claim_product_reward(token, params) {
-    return waveRequest('claim_product_reward', { token, params })
-}
-
+/** Create Product (Extended) — POST /product/create_ex, Admin auth, body: { logo, name, symbol, ipfs_url } */
 async function product_create_ex(token, data) {
-    // 扩展创建接口占位，在 wave.api.config.js 中增加 product_create_ex 配置后即可启用
     if (!WAVE_API_CONFIG.product_create_ex) return undefined
     return waveRequest('product_create_ex', { token, data })
+}
+
+/** Claim product reward — POST /1/product/claim */
+async function claim_product_reward(token, params) {
+    return waveRequest('claim_product_reward', { token, params })
 }
 
 // ——— MQTT 实时 Winner 列表 ———
@@ -219,8 +173,8 @@ function parseWinnersPayload(payload) {
             typeof payload === 'string'
                 ? payload
                 : payload && typeof payload.toString === 'function'
-                ? payload.toString()
-                : ''
+                  ? payload.toString()
+                  : ''
         data = raw ? JSON.parse(raw) : null
         console.log('parseWinnersPayload data:', data)
     } catch (_) {
@@ -231,12 +185,12 @@ function parseWinnersPayload(payload) {
     const list = Array.isArray(data)
         ? data
         : Array.isArray(data.winners)
-        ? data.winners
-        : Array.isArray(data.list)
-        ? data.list
-        : Array.isArray(data.ranking)
-        ? data.ranking
-        : []
+          ? data.winners
+          : Array.isArray(data.list)
+            ? data.list
+            : Array.isArray(data.ranking)
+              ? data.ranking
+              : []
     if (list.length > 0) {
         const normalized = list.map(normalizeWinner).filter(Boolean)
         return { list: normalized, prepend: false }
@@ -252,65 +206,195 @@ function parseWinnersPayload(payload) {
  * @param {(winners: Array<{ round: number, address: string, prize: string, rewardTime: string }>, prepend: boolean) => void} onWinners - 收到消息时回调，prepend 为 true 表示单条应插入到列表前
  * @returns {() => void} 取消订阅函数
  */
-function subscribeWinnersMQTT(onWinners) {
-    const wsUrl = 'ws://broker.emqx.io:8083/mqtt'
-    //typeof import.meta !== 'undefined' && import.meta.env?.VITE_MQTT_WS_URL
+function subscribeWinnersMQTT(userid, onWinners) {
+    const WINNERS_TOPIC3 = 'system/pve_round'
+    const WINNERS_TOPIC2 = 'system/product'
+    const WINNERS_TOPIC1 = 'system/' + userid + '/info'
+    const WINNERS_TOPIC4 = 'system/' + userid + '/red'
+    const WINNERS_TOPIC5 = 'system/' + userid + '/contribution'
+    //const wsUrl = 'ws://broker.emqx.io:8083/mqtt'
+    const wsUrl = import.meta.env.VITE_MQTT_WS_URL //'wss://horsesaga-mqtt.1033360899.dpdns.org/mqtt/'
+    //const wsUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_MQTT_WS_URL !== undefined) ? import.meta.env.VITE_MQTT_WS_URL : 'ws://broker.emqx.io:8083/mqtt'
+    console.log('subscribeWinnersMQTT wsUrl:', wsUrl)
+
+    if (!onWinners || typeof onWinners !== 'function') return () => { }
     if (!wsUrl) {
         console.warn(
             'subscribeWinnersMQTT: VITE_MQTT_WS_URL not set, skip MQTT'
         )
-        return () => {}
+        return () => { }
     }
-    if (!onWinners || typeof onWinners !== 'function') return () => {}
+
+    // 如果已经连接，直接使用现有连接并订阅主题
+    if (mqttClient && mqttClient.connected) {
+        console.log('MQTT already connected, reusing connection')
+        mqttClient.subscribe(WINNERS_TOPIC1, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+        mqttClient.subscribe(WINNERS_TOPIC2, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+        mqttClient.subscribe(WINNERS_TOPIC3, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+
+        mqttClient.subscribe(WINNERS_TOPIC4, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+        mqttClient.subscribe(WINNERS_TOPIC5, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+        console.log('MQTT subscribe:', WINNERS_TOPIC1, WINNERS_TOPIC2, WINNERS_TOPIC3, WINNERS_TOPIC4, WINNERS_TOPIC5)
+        return () => {
+            try {
+                console.log('MQTT unsubscribe:', WINNERS_TOPIC1, WINNERS_TOPIC2, WINNERS_TOPIC3)
+                mqttClient.unsubscribe(WINNERS_TOPIC1, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                mqttClient.unsubscribe(WINNERS_TOPIC2, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                mqttClient.unsubscribe(WINNERS_TOPIC3, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                mqttClient.unsubscribe(WINNERS_TOPIC4, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                mqttClient.unsubscribe(WINNERS_TOPIC5, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+            } catch (_) { }
+        }
+    } else {
+        console.log('MQTT not connected, creating new connection')
+    }
+    // 如果未连接，创建新连接
     const client = mqtt.connect(wsUrl, {
-        clientId: 'mqttx_' + Math.random().toString(36).substring(2, 15),
+        clientId: 'mqttx_' + userid,//Math.random().toString(36).substring(2, 15),
+        username: "Happy New Year",
+        password: "Happy New Year",
         keepalive: 60,
         clean: false,
         connectTimeout: 10000,
     })
 
+    // 保存客户端实例
+    mqttClient = client
+
     client.on('connect', () => {
         console.log('MQTT connected')
-        client.subscribe(WINNERS_TOPIC, { qos: 0 }, (err) => {
+        client.subscribe(WINNERS_TOPIC1, { qos: 0 }, (err) => {
             if (err) console.warn('MQTT subscribe error:', err)
         })
+        client.subscribe(WINNERS_TOPIC2, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+        client.subscribe(WINNERS_TOPIC3, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+
+        client.subscribe(WINNERS_TOPIC4, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+        client.subscribe(WINNERS_TOPIC5, { qos: 0 }, (err) => {
+            if (err) console.warn('MQTT subscribe error:', err)
+        })
+
+        console.log('MQTT subscribe:', WINNERS_TOPIC1, WINNERS_TOPIC2, WINNERS_TOPIC3, WINNERS_TOPIC4, WINNERS_TOPIC5)
+        client.on('message', (topic, payload) => {
+
+            const data = parseWinnersPayload(payload)
+            if (!onWinners) {
+                console.warn('MQTT onWinners: not set')
+                return
+            }
+
+            if (topic === WINNERS_TOPIC1) {
+                console.log('MQTT message:', topic, data)
+                onWinners(data, null, null, null, null)
+            }
+            if (topic === WINNERS_TOPIC2) {
+                console.log('MQTT message:', topic, data)
+                onWinners(null, data, null, null, null)
+            }
+            if (topic === WINNERS_TOPIC3) {
+                console.log('MQTT message:', topic, data)
+                onWinners(null, null, data, null, null)
+            }
+            if (topic === WINNERS_TOPIC4) {
+                console.log('MQTT message:', topic, data)
+                onWinners(null, null, null, data, null)
+            }
+            if (topic === WINNERS_TOPIC5) {
+                console.log('MQTT message:', topic, data)
+                onWinners(null, null, null, null, data)
+            }
+            // if (onWinners) {
+            //     const { list, prepend } = parseWinnersPayload(payload)
+            //     if (list.length) (list, prepend)
+            // }
+        })
+
+        client.on('error', (err) => console.warn('MQTT error:', err))
     })
-    client.on('message', (topic, payload) => {
-        console.log('MQTT message:', topic, payload)
-        if (onWinners) {
-            const { list, prepend } = parseWinnersPayload(payload)
-            if (list.length) onWinners(list, prepend)
+
+    // 处理连接断开，清除客户端实例
+    client.on('close', () => {
+        console.log('MQTT connection closed')
+        if (mqttClient === client) {
+            mqttClient = null
         }
     })
-    client.on('error', (err) => console.warn('MQTT error:', err))
+
+    client.on('offline', () => {
+        console.log('MQTT client offline')
+        if (mqttClient === client) {
+            mqttClient = null
+        }
+    })
 
     return () => {
         try {
-            client.end(true)
-        } catch (_) {}
+            console.log('MQTT unsubscribe:', WINNERS_TOPIC1, WINNERS_TOPIC2, WINNERS_TOPIC3)
+            if (client && client.connected) {
+                client.unsubscribe(WINNERS_TOPIC1, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                client.unsubscribe(WINNERS_TOPIC2, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                client.unsubscribe(WINNERS_TOPIC3, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                client.unsubscribe(WINNERS_TOPIC4, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+                client.unsubscribe(WINNERS_TOPIC5, (err) => {
+                    if (err) console.warn('MQTT unsubscribe error:', err)
+                })
+            }
+        } catch (_) { }
     }
 }
 
 export default {
     get_system_info,
-    get_current_ranks,
-    get_history_ranks,
     login,
     get_user_info,
-    post_bind_twitter,
-    post_bind_code,
-    claim_rank_reward,
-    get_rank_reward,
-    get_twitter_info,
-    product_check_tsn,
-    product_create,
-    get_product_info,
-    get_product_list,
-    get_mycreator_list,
+    claim_prize,
     product_create_ex,
     claim_product_reward,
     subscribeWinnersMQTT,
     normalizeWinner,
 }
 
-export { waveRequest, WAVE_API_CONFIG, subscribeWinnersMQTT, normalizeWinner }
+export {
+    waveRequest,
+    WAVE_API_CONFIG,
+    get_system_info,
+    login,
+    get_user_info,
+    claim_prize,
+    subscribeWinnersMQTT,
+    normalizeWinner,
+}

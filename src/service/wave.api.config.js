@@ -15,133 +15,55 @@
  * - throwOnError: 为 false 时请求失败返回 null 而不 throw（可选，默认 true）
  * - dataFrom: 函数，用于从业务参数生成 body（如 (invite_code) => ({ invitation_code })）（可选）
  */
+/**
+ * API 配置与 api.md 对应：
+ * - System: /1/system/info
+ * - User: /1/user/login, /1/user/info, /1/user/prize/claim
+ * - Product: /product/create_ex (Admin OAuth2)
+ */
 export const WAVE_API_CONFIG = {
-    get_system_info: {
+    // System — no auth
+    system_info: {
         path: '/1/system/info',
         auth: false,
-        contentType: 'form',
+        contentType: 'json',
         body: 'empty',
         pathParams: [],
     },
-    get_current_ranks: {
-        path: '/1/ranking/list',
-        auth: false,
-        contentType: 'form',
-        body: 'empty',
-        pathParams: [],
-    },
-    get_history_ranks: {
-        path: '/1/ranking/history',
-        auth: false,
-        contentType: 'form',
-        body: 'empty',
-        pathParams: [],
-    },
-    login: {
+    // User — OAuth2 privy_access_token
+    user_login: {
         path: '/1/user/login',
         auth: true,
         contentType: 'json',
         body: 'data',
         pathParams: [],
         requireToken: true,
-        dataFrom: (address) => ({ wallet: address }),
+        requireParams: [],
     },
-    get_user_info: {
+    user_info: {
         path: '/1/user/info',
         auth: true,
-        contentType: 'form',
+        contentType: 'json',
         body: 'empty',
         pathParams: [],
         requireToken: true,
     },
-    get_twitter_info: {
-        path: '/1/twitter/info/:tsn',
-        auth: false,
-        contentType: 'form',
-        body: 'empty',
-        pathParams: ['tsn'],
-    },
-    post_bind_twitter: {
-        path: '/1/user/bind/twitter',
+    user_prize_claim: {
+        path: '/1/user/prize/claim',
         auth: true,
-        contentType: 'form',
+        contentType: 'json',
         body: 'empty',
         pathParams: [],
         requireToken: true,
     },
-    post_bind_code: {
-        path: '/1/user/bind/invitation_code',
+    // Product — Admin OAuth2
+    product_create_ex: {
+        path: '/product/create_ex',
         auth: true,
         contentType: 'json',
         body: 'data',
         pathParams: [],
         requireToken: true,
-        dataFrom: (invite_code) => ({ invitation_code: invite_code }),
-    },
-    get_rank_reward: {
-        path: '/1/ranking/reward',
-        auth: true,
-        contentType: 'form',
-        body: 'empty',
-        pathParams: [],
-        requireToken: true,
-    },
-    claim_rank_reward: {
-        path: '/1/ranking/claim',
-        auth: true,
-        contentType: 'json',
-        body: 'params',
-        pathParams: [],
-        requireToken: true,
-    },
-    product_check_tsn: {
-        path: '/1/product/check',
-        auth: true,
-        contentType: 'json',
-        body: 'data',
-        pathParams: [],
-        requireToken: true,
-        dataFrom: (tsn) => ({ twitter_screenname: tsn }),
-    },
-    product_create: {
-        path: '/1/product/create',
-        auth: true,
-        contentType: 'json',
-        body: 'data',
-        pathParams: [],
-        requireToken: true,
-    },
-    get_product_list: {
-        path: '/1/product/list',
-        auth: false,
-        contentType: 'json',
-        body: 'params',
-        pathParams: [],
-        throwOnError: false,
-    },
-    get_mycreator_list: {
-        path: '/1/user/create/list',
-        auth: true,
-        contentType: 'json',
-        body: 'empty',
-        pathParams: [],
-        requireToken: true,
-        throwOnError: false,
-    },
-    get_product_info: {
-        path: '/1/product/info/:mint',
-        auth: true,
-        contentType: 'form',
-        body: 'empty',
-        pathParams: ['mint'],
-        requireParams: ['mint'],
-    },
-    claim_product_reward: {
-        path: '/1/product/claim',
-        auth: true,
-        contentType: 'json',
-        body: 'params',
-        pathParams: [],
-        requireParams: ['params'],
+        requireParams: ['data'],
     },
 }
